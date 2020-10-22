@@ -83,29 +83,27 @@ vector<string> ASMParser::preProcessFile(ifstream &in)
   while (getline(in, line))
   {
 
-
     // Logic if a label is found
     int colonPos = line.find(":");
-    if (colonPos > -1) {
+    if (colonPos > -1)
+    {
 
       // Parse label
       string label = line.substr(0, colonPos);
 
       // Store label with addr
-      labelsMap.insert( { label, myLabelAddress } );
+      labelsMap.insert({label, myLabelAddress});
 
       // Remove label from line
-      line = line.substr(colonPos+1, line.length());
-
+      line = line.substr(colonPos + 1, line.length());
     }
-
 
     myLabelAddress += 4;
     lines.push_back(line);
   }
 
   // reset to starting addr
-  myLabelAddress = 0x400000;  
+  myLabelAddress = 0x400000;
   return lines;
 }
 
@@ -309,14 +307,26 @@ bool ASMParser::getOperands(Instruction &i, Opcode o,
         // myLabelAddress += 4; // increment the label generator
 
         string label = operand[imm_p];
-        // cout << operand[imm_p] << endl;
 
-        if(labelsMap.find(label) == labelsMap.end()) {
-          return false;
+        // Check if label in map
+        if (labelsMap.find(label) == labelsMap.end())
+        {
+
+          // Check if label is hex
+          if (label.substr(0, 2) == "0x")
+          {
+            // Convert from hex to integer
+            imm = strtoul(label.c_str(), 0, 16);
+          }
+          else
+          {
+            return false;
+          }
         }
-
-        imm = labelsMap.at(label);
-
+        else
+        {
+          imm = labelsMap.at(label);
+        }
       }
       else // There is an error
         return false;
@@ -363,7 +373,7 @@ string ASMParser::encode(Instruction i)
 string ASMParser::intToBinaryString(int n, int length)
 {
 
-  int bin_arr[16] = {0};
+  int bin_arr[40] = {0};
   int a = 1, i;
   string str = "";
 
@@ -405,8 +415,22 @@ string ASMParser::encodeIType(Instruction i)
 
 string ASMParser::encodeJType(Instruction i)
 {
-  cout << i.getString() << endl;
-  return "No J Type Yet.";
+  // cout << i.getString() << endl;
+  // cout << myLabelAddress << endl;
+  string str = "";
+
+  // Get immediate, which is the 32 bit addr of label or hex
+  int imm = i.getImmediate();
+  string imm_bin = intToBinaryString(imm, 32);
+
+  // Remove first 4 bits (PC) and last 2 (2 bit shift)
+  imm_bin = imm_bin.substr(4, 26);
+
+  string opcode_field = opcodes.getOpcodeField(i.getOpcode());
+
+  str = opcode_field + imm_bin;
+
+  return str;
 }
 
 string ASMParser::encodeRType(Instruction i)
